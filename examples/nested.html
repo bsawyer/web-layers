@@ -5,7 +5,7 @@
     <title>nested example</title>
   </head>
   <body>
-    <web-layer id="parent" src="http://192.168.1.10:8080/examples/anonymous">
+    <web-layer id="parent" src="https://localhost:8080/examples/anonymous">
       <web-layer id="child">
         <template>
           <slot></slot>
@@ -13,9 +13,9 @@
         hello world
       </web-layer>
     </web-layer>
-    <web-layer src="http://192.168.1.10:8080/examples/anonymous">
-      <web-layer src="http://192.168.1.10:8080/examples/base"></web-layer>
+    <web-layer src="https://localhost:8080/examples/anonymous">
+      <web-layer src="https://localhost:8080/examples/base"></web-layer>
     </web-layer>
-    <script  src="http://192.168.1.10:8080/index.js"></script>
+    <script  src="https://localhost:8080/index.js"></script>
   </body>
 </html>

@@ -3,6 +3,7 @@ import fs from 'fs';
 
 import {createProxyMiddleware} from 'http-proxy-middleware';
 import express from 'express';
+import https from 'https';
 import bodyParser from 'body-parser';
 import validUrl from 'valid-url';
 
@@ -14,6 +15,9 @@ const router = express.Router();
 const registry = express.Router();
 
 const PORT = process.argv[2]|| 9000;
+
+const key = fs.readFileSync('./certs/server.key');
+const cert = fs.readFileSync('./certs/server.crt');
 
 router.use(urlencodedParser, jsonParser);
 router.use((req, res, next) => {
@@ -32,7 +36,9 @@ const urlProxy = createProxyMiddleware(
   }, {
     target: 'localhost',
     changeOrigin: true,
+    secure: false,
     router: function (req) {
+      console.log(`returning router url "${req.layerUrl.toString()}"`);
       return req.layerUrl.toString();
     },
     pathRewrite: async function (path, req) {
@@ -51,9 +57,7 @@ const urlProxy = createProxyMiddleware(
 const checkRefererAndPath = (req, res, next)=>{
   if(req.path.indexOf('/layer/') !== -1){
     const reqUrl = decodeURIComponent(req.path.slice(req.path.indexOf('/layer/') + 7));
-    if(!validUrl.isUri(reqUrl)){
-      //
-    }else{
+    if(validUrl.isUri(reqUrl)){
       req.layerUrl = new URL(reqUrl);
     }
   }
@@ -68,8 +72,14 @@ router.use((request, response, next)=>{
 
 app.use(router);
 
-app.listen(PORT);
+const server = https.createServer({
+  key,
+  cert
+}, app);
+
+// app.listen(PORT);
+server.listen(PORT);
 
 console.log(`server listening on port ${PORT}`);
 
-export default app;
+export default server;
