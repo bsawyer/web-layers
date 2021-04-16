@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>react example</title>
+    <style>
+      button{
+        color: white;
+        background: teal;
+      }
+    </style>
+  </head>
+  <body>
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.0-alpha1/JSXTransformer.js" type="text/javascript"></script>
+    <script type="text/jsx">
+      const ClickThing = (props) => {
+        const [c, setC] = React.useState(props.count);
+        const onClick = ()=>{
+          setC(c + 1);
+        };
+        return (
+          <button onClick={onClick}> Hello, <slot name="world">world</slot>! {c} </button>
+        );
+      }
+
+      ReactDOM.render
+      (
+        <ClickThing count={0}></ClickThing>,
+          document.querySelector('div')
+      );
+    </script>
+    <div></div>
+  </body>
+</html>

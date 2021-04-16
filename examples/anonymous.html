@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>anonymous example</title>
+  </head>
+  <body>
+    <slot></slot>
+    <web-layer id="anonymous">
+      hello world
+    </web-layer>
+    <script type="text/javascript">
+      anonymous.addEventListener('layerSourced', ()=>{
+        console.log('anonymous layerSourced')
+      })
+      anonymous.addEventListener('layerRendered', ()=>{
+        console.log('anonymous layerRendered');
+      })
+      window.addEventListener('DOMContentLoaded', ()=>{
+        console.log('anonymous window DOMContentLoaded')
+      })
+      window.addEventListener('load', ()=>{
+        console.log('anonymous window load')
+      })
+      window.addEventListener('sourceComplete', ()=>{
+        console.log('anonymous sourceComplete')
+      })
+      window.addEventListener('renderComplete', ()=>{
+        console.log('anonymous renderComplete')
+      })
+    </script>
+    <script  src="http://192.168.1.10:8080/index.js"></script>
+  </body>
+</html>

@@ -4,11 +4,10 @@
   "private": true,
   "description": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.mjs"
+    "dev": "npx http-server ./ --cors"
   },
   "bin": {
-    "pre-render": "bin/pre-render.js"
+    "prerender": "index.bin.js"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +18,8 @@
     "http-proxy-middleware": "^1.0.6",
     "puppeteer": "^8.0.0",
     "valid-url": "^1.0.9"
+  },
+  "devDependencies": {
+    "http-server": "^0.12.3"
   }
 }

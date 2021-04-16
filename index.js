@@ -8,14 +8,25 @@ function getIframe(){
 }
 
 function assignSourceTemplate(element, iframe){
+  iframe.contentWindow.dispatchEvent(new Event('sourceAdoptStart'));
   const template = document.createElement('template');
+  const head = document.adoptNode(iframe.contentDocument.head);
   const body = document.adoptNode(iframe.contentDocument.body);
-  template.content.appendChild(body);
-  Array.from(iframe.contentDocument.head.querySelectorAll('style, link[rel="stylesheet"]')).reverse().forEach(style => {
-    body.prepend(document.adoptNode(style));
-  });
+  const layerHead = document.createElement('wl-head');
+  const layerBody = document.createElement('wl-body');
+  template.content.appendChild(layerHead);
+  template.content.appendChild(layerBody);
+  Array.from(head.querySelectorAll('style, link[rel="stylesheet"], script'))
+    .forEach(resource => {
+      layerHead.appendChild(resource);
+    });
+  Array.from(body.childNodes)
+    .forEach(node => {
+      layerBody.appendChild(node);
+    });
   element.appendChild(template);
   element.sourceTemplate = template;
+  iframe.contentWindow.dispatchEvent(new Event('sourceAdoptComplete'));
   iframe.remove();
 }
 
@@ -25,12 +36,13 @@ function sourceLayer(element, waitingOnTemplateLayers, preview){
   WebLayer.updateStatus('source', element);
   if(preview){
     const fragment = document.createDocumentFragment();
-    getTemplateChildren(element.sourceTemplate).forEach(node => {
-      fragment.appendChild(node);
-    });
-    Array.from(fragment.querySelectorAll('script')).forEach(script => {
-      script.remove();
-    });
+    const nodes = getTemplateChildren(element.sourceTemplate);
+    nodes.head.forEach(n => fragment.appendChild(n));
+    nodes.body.forEach(n => fragment.appendChild(n));
+    Array.from(fragment.querySelectorAll('script'))
+      .forEach(script => {
+        script.remove();
+      });
     element.shadowRoot.innerHTML = '';
     element.shadowRoot.appendChild(fragment);
   }
@@ -41,41 +53,57 @@ function sourceLayer(element, waitingOnTemplateLayers, preview){
 
 function getTemplateChildren(template){
   const clone = template.content.cloneNode(true);
-  if(clone.childNodes[0] && clone.childNodes[0].tagName && clone.childNodes[0].tagName.toUpperCase() === 'BODY'){
-    return Array.from(clone.childNodes[0].childNodes);
-  }else{
-    return Array.from(clone.childNodes);
+  if(isElementType(clone.childNodes[0], 'wl-head')){
+    return {
+      head: Array.from(clone.childNodes[0].childNodes),
+      body: Array.from(clone.childNodes[1].childNodes)
+    };
   }
+  return {
+    head: [],
+    body: Array.from(clone.childNodes)
+  };
 }
 
 function getRenderIframe(element, templates){
+  const html = document.createElement('html');
+  const head = document.createElement('head');
   const body = document.createElement('body');
+  html.appendChild(head);
+  html.appendChild(body);
   templates.forEach(template => {
-    getTemplateChildren(template).forEach(node => {
-      body.appendChild(node);
+    const nodes = getTemplateChildren(template);
+    nodes.head.forEach(n => head.appendChild(n));
+    nodes.body.forEach(n => body.appendChild(n));
+  });
+  Array.from(html.querySelectorAll('script[type="text/render"]'))
+    .forEach(script => {
+      script.setAttribute('type', 'text/javascript');
     });
-  });
-  Array.from(body.querySelectorAll('script[type="text/render"]')).forEach(script => {
-    script.setAttribute('type', 'text/javascript');
-  });
   const iframe = getIframe();
-  iframe.setAttribute('srcdoc', body.outerHTML);
+  iframe.setAttribute('srcdoc', html.outerHTML);
   return iframe;
 }
 
+function adoptChildNodes(target, element){
+  Array.from(target.childNodes)
+    .forEach(node => {
+      if(!isElementType(node, 'script')){
+        element.shadowRoot.appendChild(document.adoptNode(node));
+      }
+    });
+}
+
 function adoptIframeBody(element, iframe){
-  iframe.contentWindow.dispatchEvent(new Event('adoptStart'));
+  iframe.contentWindow.dispatchEvent(new Event('renderAdoptStart'));
   element.shadowRoot.innerHTML = '';
-  Array.from(iframe.contentDocument.body.childNodes).forEach(node => {
-    if(!node.tagName || node.tagName.toUpperCase() !== 'SCRIPT'){
-      element.shadowRoot.appendChild(document.adoptNode(node));
-    }
-  });
-  iframe.contentWindow.dispatchEvent(new Event('adoptComplete'));
+  adoptChildNodes(iframe.contentDocument.head, element);
+  adoptChildNodes(iframe.contentDocument.body, element);
+  iframe.contentWindow.dispatchEvent(new Event('renderAdoptComplete'));
 }
 
 function isElementType(element, type){
-  return element.tagName && element.tagName.toUpperCase() === type.toUpperCase();
+  return element && element.tagName && element.tagName.toUpperCase() === type.toUpperCase();
 }
 
 function getTemplateLayers(element){
@@ -200,7 +228,35 @@ class WebLayer extends HTMLElement {
     }
   }
 
+  prerender(){
+    const template = Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
+    const iframe = template.content.querySelector('iframe[srcdoc]');
+    const renderEventName = this.getAttribute('renderEvent') || 'load';
+    if(WebLayer.renderStatus !== 'complete'){
+      WebLayer.renderQueue.push(this);
+      WebLayer.renderStatus = 'queued';
+    }
+    this.rendered = true;
+    this.dispatchEvent(new Event('layerRendered'));
+    const onload = ()=>{
+      adoptIframeBody(this, iframe);
+      WebLayer.updateStatus('render', this);
+    };
+    if(renderEventName === 'load'){
+      iframe.onload = onload;
+    }
+    this.appendChild(document.adoptNode(iframe));
+    if(renderEventName !== 'load'){
+      iframe.contentWindow.addEventListener(renderEventName, onload);
+    }
+  }
+
   connectedCallback(){
+    this.prerendered = this.getAttribute('prerendered') !== null;
+    if(this.prerendered){
+      this.prerender();
+      return;
+    }
     if(!this.sourced){
       this.source();
     }
@@ -210,6 +266,7 @@ class WebLayer extends HTMLElement {
     if(name === 'src' && oldValue !== newValue && this.isConnected){
       this.sourced = false;
       this.rendered = false;
+      this.prerendered = false;
       this.source();
     }
   }

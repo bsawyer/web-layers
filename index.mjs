@@ -49,16 +49,6 @@ const urlProxy = createProxyMiddleware(
 });
 
 const checkRefererAndPath = (req, res, next)=>{
-  // const referer = req.header('Referer');
-  // if(referer && referer.indexOf('/layer/') !== -1){
-  //   const refUrl = decodeURIComponent(req.header('Referer').slice(req.header('Referer').indexOf('/layer/') + 7));
-  //   if(!validUrl.isUri(refUrl)){
-  //     console.log('req ref not a valid url')
-  //   }else{
-  //     console.log('req ref has valid url')
-  //     req.refLayerUrl = new URL(refUrl);
-  //   }
-  // }
   if(req.path.indexOf('/layer/') !== -1){
     const reqUrl = decodeURIComponent(req.path.slice(req.path.indexOf('/layer/') + 7));
     if(!validUrl.isUri(reqUrl)){
@@ -66,9 +56,6 @@ const checkRefererAndPath = (req, res, next)=>{
     }else{
       req.layerUrl = new URL(reqUrl);
     }
-  }else{
-    // custom logic to show certain layers at certain urls
-    // req.layerUrl = new URL('http://127.0.0.1:8083');
   }
   next();
 };

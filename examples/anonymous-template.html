@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>anonymous template example</title>
+  </head>
+  <body>
+    <web-layer id="anonymous">
+      <template>
+        hello world
+      </template>
+    </web-layer>
+    <script type="text/javascript">
+      anonymous.addEventListener('layerSourced', ()=>{
+        console.log('anonymous template layerSourced')
+      })
+      anonymous.addEventListener('layerRendered', ()=>{
+        console.log('anonymous template layerRendered');
+      })
+      window.addEventListener('DOMContentLoaded', ()=>{
+        console.log('anonymous template window DOMContentLoaded')
+      })
+      window.addEventListener('load', ()=>{
+        console.log('anonymous template window load')
+      })
+      window.addEventListener('sourceComplete', ()=>{
+        console.log('anonymous template sourceComplete')
+      })
+      window.addEventListener('renderComplete', ()=>{
+        console.log('anonymous template renderComplete')
+      })
+    </script>
+    <script  src="http://192.168.1.10:8080/index.js"></script>
+  </body>
+</html>

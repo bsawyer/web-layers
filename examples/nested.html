@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>nested example</title>
+  </head>
+  <body>
+    <web-layer id="parent" src="http://192.168.1.10:8080/examples/anonymous">
+      <web-layer id="child">
+        <template>
+          <slot></slot>
+        </template>
+        hello world
+      </web-layer>
+    </web-layer>
+    <web-layer src="http://192.168.1.10:8080/examples/anonymous">
+      <web-layer src="http://192.168.1.10:8080/examples/base"></web-layer>
+    </web-layer>
+    <script  src="http://192.168.1.10:8080/index.js"></script>
+  </body>
+</html>

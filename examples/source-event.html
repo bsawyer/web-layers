@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>source event</title>
+  </head>
+  <body>
+    <div id="world">
+      hello
+    </div>
+    <script type="text/javascript">
+      const div = document.getElementById('world');
+      const thisScript = document.querySelector('script');
+      setTimeout(()=>{
+        div.textContent = 'hello world';
+        thisScript.remove();
+        window.dispatchEvent(new Event('customSourceEvent'))
+      }, 3000);
+    </script>
+  </body>
+</html>

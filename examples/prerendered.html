@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>prerendered example</title>
+  </head>
+  <body>
+    <web-layer id="prerendered" prerendered>
+      <template>
+        <iframe hidden="" srcdoc="<html><head></head><body><div id=&quot;world&quot;>hello world</div></body></html>"></iframe>
+      </template>
+    </web-layer>
+    <script type="text/javascript">
+      prerendered.addEventListener('layerSourced', ()=>{
+        console.log('prerendered layerSourced')
+      })
+      prerendered.addEventListener('layerRendered', ()=>{
+        console.log('prerendered layerRendered');
+      })
+      window.addEventListener('DOMContentLoaded', ()=>{
+        console.log('prerendered window DOMContentLoaded')
+      })
+      window.addEventListener('load', ()=>{
+        console.log('prerendered window load')
+      })
+      window.addEventListener('sourceComplete', ()=>{
+        console.log('prerendered sourceComplete')
+      })
+      window.addEventListener('renderComplete', ()=>{
+        console.log('prerendered renderComplete')
+      })
+    </script>
+    <script  src="http://192.168.1.10:8080/index.js"></script>
+  </body>
+</html>

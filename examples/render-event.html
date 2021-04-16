@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>render event</title>
+  </head>
+  <body>
+    <div id="world">
+      hello preview
+    </div>
+    <script type="text/render">
+      const div = document.getElementById('world');
+      setTimeout(()=>{
+        div.textContent = 'hello world';
+        window.dispatchEvent(new Event('customRenderEvent'))
+      }, 1000);
+    </script>
+    <script type="text/javascript">
+      if(!window.top.templateLayers){
+        Array.from(document.querySelectorAll('script[type="text/render"]')).forEach(script => {
+          script.removeAttribute('type');
+          script.parentNode.insertBefore(script, script);
+        });
+      }
+    </script>
+  </body>
+</html>
