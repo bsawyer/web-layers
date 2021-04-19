@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <template id="template">
+      hello world
+    </template>
+    <script type="text/javascript">
+      let i = 0;
+      while(i < 100){
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('hidden', '');
+        // iframe.setAttribute('src', '')
+        document.body.appendChild(iframe);
+
+        iframe.contentWindow.document.open();
+        iframe.contentWindow.document.write('hello');
+        iframe.contentWindow.document.close();
+
+        i++;
+      }
+    </script>
+  </body>
+</html>

@@ -6,17 +6,7 @@ const puppeteer = require('puppeteer');
   await page.evaluateOnNewDocument(() => {
     window.addEventListener('renderComplete', ({ type, detail }) => {
       Array.from(document.querySelectorAll('web-layer[template]')).forEach(l => l.remove())
-      Array.from(document.querySelectorAll('web-layer')).forEach(layer => {
-        const existingTemplate = layer.querySelector('template');
-        if(existingTemplate){
-          existingTemplate.remove();
-        }
-        const template = document.createElement('template');
-        const iframe = layer.querySelector('iframe[srcdoc]');
-        template.content.appendChild(iframe);
-        layer.appendChild(template);
-        layer.setAttribute('prerendered', '');
-      })
+      Array.from(document.querySelectorAll('iframe[src^="blob:"]')).forEach(i => i.remove())
     });
   });
   await page.goto(process.argv[2], {

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>iframe data uri perf</title>
+  </head>
+  <script type="text/javascript">
+    Object.defineProperty(HTMLIFrameElement.prototype, 'baseURI', {
+      get(){
+        return this.src;
+      },
+      set(){}
+    });
+  </script>
+  <body>
+    <template id="template">
+      <iframe src="data:text/html;base64,PHNjcmlwdCBzcmM9Imh0dHBzOi8vbG9jYWxob3N0OjkwMDAvbGF5ZXIvaHR0cHMlM0ElMkYlMkZsb2NhbGhvc3QlM0E4MDgwJTJGaW5kZXguanMiPjwvc2NyaXB0Pg==" hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+      <iframe src="data:text/html;base64," hidden=""></iframe>
+    </template>
+    <script type="text/javascript">
+      window.onload = ()=>{
+        document.body.appendChild(template.content.cloneNode(true))
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <template id="template">
+      hello world
+    </template>
+    <script type="text/javascript">
+      let i = 0;
+      while(i < 100){
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('hidden', '');
+        const blob = new Blob(['hello'], {type: "text/html"});
+        var newurl = window.URL.createObjectURL(blob);
+        iframe.src = newurl;
+        document.body.appendChild(iframe);
+        i++;
+      }
+    </script>
+  </body>
+</html>

@@ -1,6 +1,44 @@
 window.top.sourceTemplate = window.top.sourceTemplate || {};
 window.top.proxy = window.top.proxy || new URL(`${window.top.location.origin}/layer`);
 
+function createBatch(max = 10){
+  const queue = [];
+  let listening;
+  let t;
+
+  return function batch(fn){
+    const next = ()=>{
+      let i = 0;
+      while(queue.length && i < max){
+        queue.shift()();
+        i++;
+      }
+      if(queue.length){
+        t = setTimeout(next);
+      }else{
+        t = null;
+      }
+    };
+    if(document.readyState === 'complete'){
+      queue.push(fn);
+      if(!t){
+        t = setTimeout(next);
+      }
+      return;
+    }
+    if(!listening){
+      listening = true;
+      window.addEventListener('load', ()=>{
+        next();
+        listening = false;
+      }, {once: true});
+    }
+    queue.push(fn);
+  };
+}
+
+const batch = createBatch();
+
 function getIframe(){
   const iframe = document.createElement('iframe');
   iframe.setAttribute('hidden', '');
@@ -8,7 +46,7 @@ function getIframe(){
 }
 
 function assignSourceTemplate(element, iframe){
-  iframe.contentWindow.dispatchEvent(new Event('sourceAdoptStart'));
+  iframe.contentWindow.dispatchEvent(new CustomEvent('sourceAdoptStart', {detail:{element, window}}));
   const template = document.createElement('template');
   const head = document.adoptNode(iframe.contentDocument.head);
   const body = document.adoptNode(iframe.contentDocument.body);
@@ -26,7 +64,7 @@ function assignSourceTemplate(element, iframe){
     });
   element.appendChild(template);
   element.sourceTemplate = template;
-  iframe.contentWindow.dispatchEvent(new Event('sourceAdoptComplete'));
+  iframe.contentWindow.dispatchEvent(new CustomEvent('sourceAdoptComplete', {detail:{element, window}}));
   iframe.remove();
 }
 
@@ -81,7 +119,10 @@ function getRenderIframe(element, templates){
       script.setAttribute('type', 'text/javascript');
     });
   const iframe = getIframe();
-  iframe.setAttribute('srcdoc', html.outerHTML);
+  // iframe.setAttribute('srcdoc', html.outerHTML);
+  // iframe.setAttribute('src', `data:text/html;base64,${btoa(html.outerHTML)}`)
+  const blob = new Blob([html.outerHTML], {type: 'text/html'});
+  iframe.setAttribute('src', window.URL.createObjectURL(blob));
   return iframe;
 }
 
@@ -95,11 +136,13 @@ function adoptChildNodes(target, element){
 }
 
 function adoptIframeBody(element, iframe){
-  iframe.contentWindow.dispatchEvent(new Event('renderAdoptStart'));
-  element.shadowRoot.innerHTML = '';
-  adoptChildNodes(iframe.contentDocument.head, element);
-  adoptChildNodes(iframe.contentDocument.body, element);
-  iframe.contentWindow.dispatchEvent(new Event('renderAdoptComplete'));
+  iframe.contentWindow.dispatchEvent(new CustomEvent('renderAdoptStart', {detail:{element, window}}));
+  requestAnimationFrame(()=>{
+    element.shadowRoot.innerHTML = '';
+    adoptChildNodes(iframe.contentDocument.head, element);
+    adoptChildNodes(iframe.contentDocument.body, element);
+    iframe.contentWindow.dispatchEvent(new CustomEvent('renderAdoptComplete', {detail:{element, window}}));
+  });
 }
 
 function isElementType(element, type){
@@ -128,10 +171,10 @@ class WebLayer extends HTMLElement {
     const templateLayers = getTemplateLayers(this);
     const sourceEventName = this.getAttribute('sourceEvent') || 'DOMContentLoaded';
     const src = this.getAttribute('src');
-    const previewSourceTemplate = this.getAttribute('previewSourceTemplate') !== null;
-    const showLayerContent = this.getAttribute('showLayerContent') !== null;
+    const previewSource = this.getAttribute('previewSource') !== null;
+    const previewContent = this.getAttribute('previewContent') !== null;
 
-    if(showLayerContent){
+    if(previewContent){
       this.shadowRoot.innerHTML = '';
       this.shadowRoot.appendChild(document.createElement('slot'));
     }
@@ -156,7 +199,7 @@ class WebLayer extends HTMLElement {
       this.sourceTemplate = document.createElement('template');
       this.appendChild(this.sourceTemplate);
       this.sourceTemplate.content.appendChild(document.createElement('slot'));
-      sourceLayer(this, !!templateLayers.length, previewSourceTemplate);
+      sourceLayer(this, !!templateLayers.length, previewSource);
       return;
     }
 
@@ -165,7 +208,7 @@ class WebLayer extends HTMLElement {
       if(src && !window.top.sourceTemplate[src]){
         window.top.sourceTemplate[src] = this;
       }
-      sourceLayer(this, !!templateLayers.length, previewSourceTemplate);
+      sourceLayer(this, !!templateLayers.length, previewSource);
       return;
     }
 
@@ -174,11 +217,11 @@ class WebLayer extends HTMLElement {
         if(!window.top.sourceTemplate[src].sourced){
           window.top.sourceTemplate[src].addEventListener('layerSourced', ()=>{
             this.sourceTemplate = window.top.sourceTemplate[src].sourceTemplate;
-            sourceLayer(this, !!templateLayers.length, previewSourceTemplate);
+            sourceLayer(this, !!templateLayers.length, previewSource);
           }, {once: true});
         }else{
           this.sourceTemplate = window.top.sourceTemplate[src].sourceTemplate;
-          sourceLayer(this, !!templateLayers.length, previewSourceTemplate);
+          sourceLayer(this, !!templateLayers.length, previewSource);
         }
       }else{
         window.top.sourceTemplate[src] = this;
@@ -187,7 +230,7 @@ class WebLayer extends HTMLElement {
         this.appendChild(iframe);
         iframe.contentWindow.addEventListener(sourceEventName, () => {
           assignSourceTemplate(this, iframe);
-          sourceLayer(this, !!templateLayers.length, previewSourceTemplate);
+          sourceLayer(this, !!templateLayers.length, previewSource);
         });
       }
     }
@@ -209,54 +252,28 @@ class WebLayer extends HTMLElement {
       WebLayer.renderStatus = 'queued';
     }
 
-    this.rendered = true;
-    this.dispatchEvent(new Event('layerRendered'));
-
     templateLayerTemplates.unshift(this.sourceTemplate);
 
     const iframe = getRenderIframe(this, templateLayerTemplates);
-    const onload = ()=>{
-      adoptIframeBody(this, iframe);
-      WebLayer.updateStatus('render', this);
-    };
-    if(renderEventName === 'load'){
-      iframe.onload = onload;
-    }
-    this.appendChild(iframe);
-    if(renderEventName !== 'load'){
-      iframe.contentWindow.addEventListener(renderEventName, onload);
-    }
-  }
 
-  prerender(){
-    const template = Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
-    const iframe = template.content.querySelector('iframe[srcdoc]');
-    const renderEventName = this.getAttribute('renderEvent') || 'load';
-    if(WebLayer.renderStatus !== 'complete'){
-      WebLayer.renderQueue.push(this);
-      WebLayer.renderStatus = 'queued';
-    }
-    this.rendered = true;
-    this.dispatchEvent(new Event('layerRendered'));
-    const onload = ()=>{
-      adoptIframeBody(this, iframe);
-      WebLayer.updateStatus('render', this);
-    };
-    if(renderEventName === 'load'){
-      iframe.onload = onload;
-    }
-    this.appendChild(document.adoptNode(iframe));
-    if(renderEventName !== 'load'){
-      iframe.contentWindow.addEventListener(renderEventName, onload);
-    }
+    batch(() => {
+      const onload = ()=>{
+        adoptIframeBody(this, iframe);
+        this.rendered = true;
+        this.dispatchEvent(new Event('layerRendered'));
+        WebLayer.updateStatus('render', this);
+      };
+      if(renderEventName === 'load'){
+        iframe.onload = onload;
+      }
+      this.appendChild(iframe);
+      if(renderEventName !== 'load'){
+        iframe.contentWindow.addEventListener(renderEventName, onload);
+      }
+    });
   }
 
   connectedCallback(){
-    this.prerendered = this.getAttribute('prerendered') !== null;
-    if(this.prerendered){
-      this.prerender();
-      return;
-    }
     if(!this.sourced){
       this.source();
     }
@@ -266,7 +283,6 @@ class WebLayer extends HTMLElement {
     if(name === 'src' && oldValue !== newValue && this.isConnected){
       this.sourced = false;
       this.rendered = false;
-      this.prerendered = false;
       this.source();
     }
   }
