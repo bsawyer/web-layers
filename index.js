@@ -1,6 +1,3 @@
-window.top.sourceTemplate = window.top.sourceTemplate || {};
-window.top.proxy = window.top.proxy || new URL(`${window.top.location.origin}/layer`);
-
 function createBatch(max = 10){
   const queue = [];
   let listening;
@@ -68,11 +65,17 @@ function assignSourceTemplate(element, iframe){
   iframe.remove();
 }
 
-function sourceLayer(element, waitingOnTemplateLayers, preview){
-  element.sourced = true;
+function sourceLayer({
+  element,
+  template,
+  waitingOnTemplateLayers,
+  previewSource
+}){
+  element.sourceTemplate = template;
+  element.isSourced = true;
   element.dispatchEvent(new Event('layerSourced'));
   WebLayer.updateStatus('source', element);
-  if(preview){
+  if(previewSource){
     const fragment = document.createDocumentFragment();
     const nodes = getTemplateChildren(element.sourceTemplate);
     nodes.head.forEach(n => fragment.appendChild(n));
@@ -84,7 +87,7 @@ function sourceLayer(element, waitingOnTemplateLayers, preview){
     element.shadowRoot.innerHTML = '';
     element.shadowRoot.appendChild(fragment);
   }
-  if(!waitingOnTemplateLayers && !element.rendered){
+  if(!waitingOnTemplateLayers && !element.isRendered){
     element.render();
   }
 }
@@ -103,7 +106,7 @@ function getTemplateChildren(template){
   };
 }
 
-function getRenderIframe(element, templates){
+function getRenderDocument(templates){
   const html = document.createElement('html');
   const head = document.createElement('head');
   const body = document.createElement('body');
@@ -118,6 +121,11 @@ function getRenderIframe(element, templates){
     .forEach(script => {
       script.setAttribute('type', 'text/javascript');
     });
+  return html;
+}
+
+function getRenderIframe(element, templates){
+  const html = getRenderDocument(templates);
   const iframe = getIframe();
   // iframe.setAttribute('srcdoc', html.outerHTML);
   // iframe.setAttribute('src', `data:text/html;base64,${btoa(html.outerHTML)}`)
@@ -145,12 +153,27 @@ function adoptIframeBody(element, iframe){
   });
 }
 
+function appendChildNodes(target, element){
+  Array.from(target.childNodes)
+    .forEach(node => {
+      element.shadowRoot.appendChild(document.adoptNode(node));
+    });
+}
+
+function appendDocument(element, document){
+  requestAnimationFrame(()=>{
+    element.shadowRoot.innerHTML = '';
+    appendChildNodes(document.children[0], element);
+    appendChildNodes(document.children[1], element);
+  });
+}
+
 function isElementType(element, type){
   return element && element.tagName && element.tagName.toUpperCase() === type.toUpperCase();
 }
 
-function getTemplateLayers(element){
-  return Array.from(element.children).filter(child => isElementType(child, 'web-layer') && child.getAttribute('template') !== null);
+function getExtendLayers(element){
+  return Array.from(element.children).filter(child => child.getAttribute('extend') !== null);
 }
 
 function getIframeSource(src){
@@ -161,14 +184,28 @@ function getIframeSource(src){
 class WebLayer extends HTMLElement {
   constructor() {
     super();
-    this.sourced = false;
-    this.rendered = false;
+    this.isSourced = false;
+    this.isRendered = false;
     this.attachShadow({mode: 'open'});
+  }
+
+  connectedCallback(){
+    if(!this.isSourced && this.isConnected){
+      this.source();
+    }
+  }
+
+  attributeChangedCallback(name, oldValue, newValue){
+    if(name === 'src' && oldValue !== newValue && this.isConnected){
+      this.isSourced = false;
+      this.isRendered = false;
+      this.source();
+    }
   }
 
   source(){
     const template = Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
-    const templateLayers = getTemplateLayers(this);
+    const extendLayers = getExtendLayers(this);
     const sourceEventName = this.getAttribute('sourceEvent') || 'DOMContentLoaded';
     const src = this.getAttribute('src');
     const previewSource = this.getAttribute('previewSource') !== null;
@@ -184,11 +221,11 @@ class WebLayer extends HTMLElement {
       WebLayer.sourceStatus = 'queued';
     }
 
-    if(templateLayers.length){
-      templateLayers.forEach(layer => {
+    if(extendLayers.length){
+      extendLayers.forEach(layer => {
         layer.addEventListener('layerSourced', () => {
-          templateLayers.splice(templateLayers.indexOf(layer), 1);
-          if(!templateLayers.length && this.sourced){
+          extendLayers.splice(extendLayers.indexOf(layer), 1);
+          if(!extendLayers.length && this.isSourced){
             this.render();
           }
         }, {once:true});
@@ -196,53 +233,97 @@ class WebLayer extends HTMLElement {
     }
 
     if(!src && !template){
-      this.sourceTemplate = document.createElement('template');
-      this.appendChild(this.sourceTemplate);
-      this.sourceTemplate.content.appendChild(document.createElement('slot'));
-      sourceLayer(this, !!templateLayers.length, previewSource);
+      const anonymousTemplate = document.createElement('template');
+      anonymousTemplate.content.appendChild(document.createElement('slot'));
+      this.appendChild(anonymousTemplate);
+      sourceLayer({
+        element: this,
+        template: anonymousTemplate,
+        waitingOnTemplateLayers: !!extendLayers.length,
+        previewSource
+      });
       return;
     }
 
     if(template){
-      this.sourceTemplate = template;
-      if(src && !window.top.sourceTemplate[src]){
-        window.top.sourceTemplate[src] = this;
+      if(src && !WebLayer.TemplateRegsitry.get(src)){
+        WebLayer.TemplateRegsitry.define(src, this);
       }
-      sourceLayer(this, !!templateLayers.length, previewSource);
+      sourceLayer({
+        element: this,
+        template,
+        waitingOnTemplateLayers: !!extendLayers.length,
+        previewSource
+      });
       return;
     }
 
     if(src){
-      if(window.top.sourceTemplate[src]){
-        if(!window.top.sourceTemplate[src].sourced){
-          window.top.sourceTemplate[src].addEventListener('layerSourced', ()=>{
-            this.sourceTemplate = window.top.sourceTemplate[src].sourceTemplate;
-            sourceLayer(this, !!templateLayers.length, previewSource);
+      const existingTemplate = WebLayer.TemplateRegsitry.get(src);
+      if(existingTemplate){
+        if(!existingTemplate.isSourced){
+          existingTemplate.addEventListener('layerSourced', ()=>{
+            sourceLayer({
+              element: this,
+              template: existingTemplate.sourceTemplate,
+              waitingOnTemplateLayers: !!extendLayers.length,
+              previewSource
+            });
           }, {once: true});
         }else{
-          this.sourceTemplate = window.top.sourceTemplate[src].sourceTemplate;
-          sourceLayer(this, !!templateLayers.length, previewSource);
+          sourceLayer({
+            element: this,
+            template: existingTemplate.sourceTemplate,
+            waitingOnTemplateLayers: !!extendLayers.length,
+            previewSource
+          });
         }
       }else{
-        window.top.sourceTemplate[src] = this;
-        const iframe = getIframe();
-        iframe.setAttribute('src', getIframeSource(src));
-        this.appendChild(iframe);
-        iframe.contentWindow.addEventListener(sourceEventName, () => {
-          assignSourceTemplate(this, iframe);
-          sourceLayer(this, !!templateLayers.length, previewSource);
-        });
+        const prerenderedTemplate = document.querySelector(`[src="${src}"]>template`);
+        if(prerenderedTemplate){
+          WebLayer.TemplateRegsitry.define(src, prerenderedTemplate.parentNode);
+          prerenderedTemplate.parentNode.addEventListener('layerSourced', () => {
+            sourceLayer({
+              element: this,
+              template: prerenderedTemplate.sourceTemplate,
+              waitingOnTemplateLayers: !!extendLayers.length,
+              previewSource
+            });
+          }, {once: true});
+        }else{
+          WebLayer.TemplateRegsitry.define(src, this);
+          const iframe = getIframe();
+          iframe.setAttribute('src', getIframeSource(src));
+          this.appendChild(iframe);
+          iframe.contentWindow.addEventListener(sourceEventName, () => {
+            assignSourceTemplate(this, iframe);
+            sourceLayer({
+              element: this,
+              template: this.sourceTemplate,
+              waitingOnTemplateLayers: !!extendLayers.length,
+              previewSource
+            });
+          });
+        }
       }
     }
   }
 
   render(){
-    const templateLayerTemplates = getTemplateLayers(this).map(layer => layer.sourceTemplate);
     const isTemplate = this.getAttribute('template') !== null;
-    const renderEventName = this.getAttribute('renderEvent') || 'load';
-
     if(isTemplate){
-      this.rendered = true;
+      return;
+    }
+    const templateLayerTemplates = Array.from(this.children)
+      .filter(child => child.getAttribute('extend') !== null || child instanceof HTMLTemplateElement)
+      .map(child => child.sourceTemplate || child);
+    const isExtend = this.getAttribute('extend') !== null;
+    const hasTemplate = !!Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
+    const renderEventName = this.getAttribute('renderEvent') || 'load';
+    const sharedContext = this.getAttribute('sharedContext') !== null;
+
+    if(isExtend){
+      this.isRendered = true;
       this.dispatchEvent(new Event('layerRendered'));
       return;
     }
@@ -252,14 +333,24 @@ class WebLayer extends HTMLElement {
       WebLayer.renderStatus = 'queued';
     }
 
-    templateLayerTemplates.unshift(this.sourceTemplate);
+    if(!hasTemplate){
+      templateLayerTemplates.unshift(this.sourceTemplate);
+    }
+
+    if(sharedContext){
+      appendDocument(this, getRenderDocument(templateLayerTemplates));
+      this.isRendered = true;
+      this.dispatchEvent(new Event('layerRendered'));
+      WebLayer.updateStatus('render', this);
+      return;
+    }
 
     const iframe = getRenderIframe(this, templateLayerTemplates);
 
     batch(() => {
       const onload = ()=>{
         adoptIframeBody(this, iframe);
-        this.rendered = true;
+        this.isRendered = true;
         this.dispatchEvent(new Event('layerRendered'));
         WebLayer.updateStatus('render', this);
       };
@@ -272,22 +363,51 @@ class WebLayer extends HTMLElement {
       }
     });
   }
-
-  connectedCallback(){
-    if(!this.sourced){
-      this.source();
-    }
-  }
-
-  attributeChangedCallback(name, oldValue, newValue){
-    if(name === 'src' && oldValue !== newValue && this.isConnected){
-      this.sourced = false;
-      this.rendered = false;
-      this.source();
-    }
-  }
 }
-
+WebLayer.TemplateRegsitry = {
+  get(src){
+    return WebLayer.TemplateRegsitry.templates[src];
+  },
+  define(src, element){
+    if(!element instanceof WebLayer){
+      throw new Error(`Invalid element`)
+    }
+    if(WebLayer.TemplateRegsitry.templates[src]){
+      throw new Error(`Template exists`)
+    }
+    WebLayer.TemplateRegsitry.templates[src] = element;
+  }
+};
+function templateRegistryClosure(){
+  const templates = {};
+  return {
+    get(){
+      if(window.top === window){
+        return templates;
+      }
+      return window.top.customElements.get('web-layer').TemplateRegsitry.templates;
+    },
+    set(){
+      //
+    }
+  };
+}
+function proxyClosure(){
+  let localProxy = new URL(`${window.top.location.origin}/layer`);
+  return {
+    get(){
+      if(window.top === window){
+        return localProxy;
+      }
+      return window.top.customElements.get('web-layer').proxy;
+    },
+    set(value){
+      localProxy = new URL(value);
+    }
+  };
+}
+Object.defineProperty(WebLayer.TemplateRegsitry, 'templates', templateRegistryClosure())
+Object.defineProperty(WebLayer, 'proxy', proxyClosure())
 WebLayer.sourceStatus = 'pending'; // pending, queued, complete
 WebLayer.sourceQueue = [];
 WebLayer.renderStatus = 'pending'; // pending, queued, complete

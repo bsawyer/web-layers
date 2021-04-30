@@ -5,7 +5,7 @@ const puppeteer = require('puppeteer');
   const page = await browser.newPage()
   await page.evaluateOnNewDocument(() => {
     window.addEventListener('renderComplete', ({ type, detail }) => {
-      Array.from(document.querySelectorAll('web-layer[template]')).forEach(l => l.remove())
+      // Array.from(document.querySelectorAll('web-layer[template]')).forEach(l => l.remove())
       Array.from(document.querySelectorAll('iframe[src^="blob:"]')).forEach(i => i.remove())
     });
   });

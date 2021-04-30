@@ -5,9 +5,10 @@
     <title>anonymous template example</title>
   </head>
   <body>
-    <web-layer id="anonymous">
+    <web-layer id="anonymous" sharedContext>
       <template>
-        hello world
+        anonymous template with shared context
+        <button onclick="console.log('click')" type="button" name="button">shared click me</button>
       </template>
     </web-layer>
     <script type="text/javascript">
@@ -30,6 +31,6 @@
         console.log('anonymous template renderComplete')
       })
     </script>
-    <script  src="https://localhost:8080/index.js"></script>
+    <script src="https://localhost:8080/index.js"></script>
   </body>
 </html>

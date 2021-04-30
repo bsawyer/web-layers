@@ -3,12 +3,18 @@
   <head>
     <meta charset="utf-8">
     <title>base</title>
+    <style media="screen">
+      span{
+        background: blue;
+        color: white;
+      }
+    </style>
   </head>
   <body>
-    <span id="world">hello world</span>
+    <span id="base">base</span>
     <script type="text/javascript">
-      world.addEventListener('click', ()=>{
-        console.log('click')
+      base.addEventListener('click', ()=>{
+        console.log('base click')
       })
     </script>
   </body>

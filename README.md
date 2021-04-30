@@ -2,6 +2,14 @@
 
 ## Custom Element
 
+### Lifecycle
+- construct
+- connect
+- attribute change
+  - source
+  - render
+- prerender
+
 ## Proxy Server
 
 ## CLI
