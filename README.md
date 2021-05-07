@@ -1,15 +1,42 @@
 # Web Layers
 
+Web Layers is an extension of the Web Components suite enabling complete component encapsulation including JavaScript, declarative definition, and a no build environment for the prototyping and development of web apps.
+
+## Use Cases
+
+**Encapsulation**
+
+The ability to compose your application with different frontend frameworks and build requirements.
+
+An online store with
+
+- A navigation element written in react and built with Webpack.
+- A static details page written with Web Components.
+- A shopping cart application written in svelte and built with Snowpack.
+
+**Declarative**
+
+something about not having a package.json file and a bunch of imports
+
+**No Build**
+
+Reduce the overhead of build system and configuration requirements by prototyping and developing applications without the need for complex development dependency installation or setup.
+
+Develop a new application by using the
+- Online sandbox
+- Local proxy server
+
+## Usage
+
+ - **Custom Element**: A web layer is a custom element and can be declaratively defined in HTML or constructed with JavaScript.
+ - **Proxy Server**: The proxy server allows cross origin resources to be fetched and managed by one window context, custom resource resolving, and same origin resource caching with service workers.
+ - **Prerendering**:
+
 ## Custom Element
 
 ### Properties
 
-#### `WebLayer.proxy`
-A writable property that is only assigned on the top host layer. The proxy is a URL string that is used to construct the layers source iframe `src` attribute value only when the current `window.location.origin` does not match the layers src origin.
-
-#### `WebLayer.TemplateRegistry`
-
-The `TemplateRegistry` is responsible for managing each layers source templates. It is a map of layer source URLs and their source node instances.
+#### `WebLayer.customEvents`
 
 ### Attributes
 
@@ -17,15 +44,15 @@ The `TemplateRegistry` is responsible for managing each layers source templates.
 
 The src attribute is a URL string used to source a layer and its resources. This is achieved by creating a hidden `iframe`, setting the src attribute of the iframe to the value of the src attribute on the layer, proxying if needed, and listening for the [source event](#weblayer-window).
 
-```
-<web-layer src="https://github.io/my-layer"></web-layer>
+```html
+<web-layer src="https://github.io/my-layer/"></web-layer>
 ```
 
 #### `previewContent`
 
 When present the `previewContent` attribute will slot the layers content in the `WebLayer.shadowRoot`. The `<slot>` element will either be replaced with the sourced result if `previewSource` is present or replaced with the rendered content.
 
-```
+```html
 <web-layer previewContent></web-layer>
 ```
 
@@ -33,7 +60,7 @@ When present the `previewContent` attribute will slot the layers content in the 
 
 When present the `previewSource` attribute indicates that once the layer is sourced to render the contents in the `WebLayer.shadowRoot`. This content will be replaced with the rendered result.
 
-```
+```html
 <web-layer previewSource></web-layer>
 ```
 
@@ -45,7 +72,7 @@ The sharedContext attribute prevents the layer from creating a new context windo
 >
 > `renderAdoptStart` and `renderAdoptComplete` events will not be dispatched on layers with the `sharedContext` attribute.
 
-```
+```html
 <web-layer sharedContext></web-layer>
 ```
 
@@ -53,7 +80,7 @@ The sharedContext attribute prevents the layer from creating a new context windo
 
 The `extend` attribute will source and merge the target layers template with the parent layer. When there are multiple extending layers, the target layers resources are appended to the parents `<head>` or `<body>` in the same order as they appear in the content.
 
-```
+```html
 <web-layer>
   <web-layer extend></web-layer>
 </web-layer>
@@ -64,79 +91,123 @@ The `extend` attribute will source and merge the target layers template with the
 
 The `template` attribute indicates that the web layer will be sourced but not rendered. This is used in prerendering and also allows for presourcing a layer.
 
-```
+```html
 <web-layer template></web-layer>
+```
+
+#### `sourceEvent`
+
+The `sourceEvent` attribute defines a custom complete event that will be dispatched from the source iframe when it is done.
+
+```html
+<web-layer sourceEvent="customSource">
+  <template>
+    <script>
+      setTimeout(() =>
+        window.dispatch(new Event('customSource')),
+        3000
+      )
+    </script>
+  </template>
+</web-layer>
 ```
 
 ### Events
 
-#### WebLayer
+#### Web Layer
+
 Events dispatched on the `WebLayer` element
 
 ##### `layerSourced`
+
 Event dispatched on the `WebLayer` element when it has finished sourcing
 
 ##### `layerRendered`
+
 Event dispatched on the `WebLayer` element when it has finished rendering
 
 ##### `layerPrerendered`
+
 Event dispatched on the `WebLayer` element when it has finished prerendering
 
-#### WebLayer Window
+#### Web Layer Window
+
 Events dispatched on `WebLayer` iframe windows
 
-##### `sourceAdoptStart`
+##### `sourceStart`
 
-`CustomEvent` dispatched before the source iframes childnodes are adopted into the host layers document and appended to the host layers template. This event is dispatched with a detail payload of:
-```
-const {
-  element, // a reference to the host `WebLayer` node
-  window // a reference to the host window
-} = event;
-```
+`CustomEvent` dispatched when a source iframe is created and appended to the host. This event is dispatched with a `WebLayerEventDetail` instance as its `CustomEvent.detail`.
 
-**sourceAdoptComplete**
+##### `renderStart`
 
-`CustomEvent` dispatched after the source iframes childnodes are adopted into the host layers document and appended to the host layers template. This event is dispatched with a detail payload of:
-```
-const {
-  element, // a reference to the host `WebLayer` node
-  window // a reference to the host window
-} = event;
-```
+`CustomEvent` dispatched when a render iframe is created and appended to the host. This event is dispatched with a `WebLayerEventDetail` instance as its `CustomEvent.detail`.
 
-**renderAdoptStart**
+##### `renderAdoptComplete`
 
-`CustomEvent` dispatched before the render iframes childnodes are adopted into the host layers document and appended to the host layers shadowRoot. This event is dispatched with a detail payload of:
-```
-const {
-  element, // a reference to the host `WebLayer` node
-  window // a reference to the host window
-} = event;
-```
+`CustomEvent` dispatched after the render iframes childnodes are adopted into the host layers document and appended to the host layers shadowRoot. This event is dispatched with a `WebLayerEventDetail` instance as its `CustomEvent.detail`.
 
-**renderAdoptComplete**
+#### Host Window
 
-`CustomEvent` dispatched after the render iframes childnodes are adopted into the host layers document and appended to the host layers shadowRoot. This event is dispatched with a detail payload of:
-```
-const {
-  element, // a reference to the host `WebLayer` node
-  window // a reference to the host window
-} = event;
-```
+Events dispatched on the host window
 
-**layerLifecycle**
+##### `sourceComplete`
+Dispatched when all the `WebLayer` instances have been sourced
 
-`CustomEvent` dispatched as a source, render, or prerender lifecycle event with a detail payload of:
-```
-const {
-  lifecycle, // the current lifecycle event, one of source, render or prerender
-  defineCustomCompleteEvent // a function that takes a string parameter defining a custom event to listen for when the layers lifecycle is complete
-} = event;
-```
+##### `renderComplete`
+
+Dispatched when all the `WebLayer` instances have been rendered
+
+##### `prerenderStart`
+
+Dispatched when a prerender has been started.
+
+##### `prerenderComplete`
+
+Dispatched when all the `WebLayer` instances have been prerendered
+
+### Interfaces
+
+#### `WebLayerEventDetail`
+
+The `WebLayerEventDetail` interface exposes the host window and host layer.
+
+##### Properties
+
+`WebLayerEventDetail.window`
+
+A reference to the host window
+
+`WebLayerEventDetail.element`
+
+A reference to the host layer
+
+#### `Proxy`
+
+A writable property that is only assigned on the top host layer. The proxy is a URL string that is used to construct the layers source iframe `src` attribute only when the current `window.location.origin` does not match the layers src origin. To get an instance of it, use the `window.webLayerProxy` property.
+
+#### `TemplateRegistry`
+
+The `TemplateRegistry` is responsible for managing each layers source templates. It is a map of layer source URLs and their source node instances. To get an instance of it, use the `window.webLayerTemplateRegistry` property.
+
+#### `CustomEventRegistry`
+
+The `CustomEventRegistry` interface provides methods for registering and querying custom events. An instance of it will be passed as the event detail for `sourceStart` and `renderStart` events. It can also be accessed from the `WebLayer.customEvents` property.
+
+##### Methods
+
+`customCompleteEvents.get(event)`
+Returns the event name for the complete event.
+
+`customCompleteEvents.define(event, customName)`
+Defines a new custom complete event.
+
 > **Note**
 >
-> Ensure the `CustomCompleteEvent` is dispatched *after* calling `defineCustomCompleteEvent()`
+> Calling define will cancel any current event listeners for that event and add them as listeners to the new event name.
+
+##### Examples
+
+TBD
 
 The default events for each lifecycle are:
 - **source:**
@@ -148,22 +219,8 @@ The default events for each lifecycle are:
 - **prerender:**
 `renderComplete`
 
-#### Host Window
-Events dispatched on the host window
-
-**sourceComplete**
-
-Dispatched when all the `WebLayer` instances have been sourced
-
-**renderComplete**
-
-Dispatched when all the `WebLayer` instances have been rendered
-
-**prerenderComplete**
-
-Dispatched when all the `WebLayer` instances have been prerendered
-
 ### Lifecycle
+
 - construct
 - connect
 - attribute change
@@ -171,36 +228,32 @@ Dispatched when all the `WebLayer` instances have been prerendered
   - render
 - prerender
 
-## Proxy Server
-
-Exports a default express server
-```
-import server from 'web-layers';
-
-server.listen(9000);
-```
-
-Optionally run the dev proxy
-```
-npx web-layers proxy
-```
-
 ## CLI
 
-```
-npx web-layers prerender https://localhost:9000/layer/https%3A%2F%2Flocalhost%3A8080%2Fexamples%2Ftest
+Prerenders the target URL and prints the prerendered html to the console
+
+```bash
+~ npx web-layers prerender https://localhost:9000/layer/https%3A%2F%2Flocalhost%3A8080%2Fexamples%2Ftest
 ```
 
-Prints the prerendered html to the console
+Optionaly write the output to a file
 
+```bash
+~ npx web-layers prerender https://localhost:9000/examples/test > index.html
 ```
-npx web-layers prerender https://localhost:9000/examples/test > index.html
+
+Start a local proxy server
+
+```bash
+~ npx web-layers proxy
+
 ```
 
 ## Development
+
 1. install deps
-```
-  npm i
+```bash
+~ npm i
 ```
 
 2. get HTTPS working for localhost see
@@ -209,17 +262,19 @@ npx web-layers prerender https://localhost:9000/examples/test > index.html
 ### Custom Element
 
 1. run static server
-```
-node static.js
+```bash
+~ node static.js
 ```
 
 2. view an example e.g. https://localhost:8080/examples/nested.html
 
 ### Proxy Server
+
 1. run proxy server
+```bash
+~ node index.mjs
 ```
-  node index.mjs
-```
+
 2. view an example
 ```
 https://localhost:9000/layer/https%3A%2F%2Flocalhost%3A8080%2Fexamples%2Fperformance.html
@@ -227,6 +282,7 @@ https://localhost:9000/layer/https%3A%2F%2Flocalhost%3A8080%2Fexamples%2Fperform
 
 
 ### HTTPS for Localhost
+
 Steps taken from https://www.freecodecamp.org/news/how-to-get-https-working-on-your-local-development-environment-in-5-minutes-7af615770eec/
 
 1. make a directory somewhere

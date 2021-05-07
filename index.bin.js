@@ -9,7 +9,7 @@ const puppeteer = require('puppeteer');
       window.addEventListener('prerenderComplete', ()=>{
         window._prerendered = true;
       });
-      window.dispatch(new Event('prerender'));
+      window.dispatch(new CustomEvent('layerLifecycle', {details:{}}));
 
       // copy shadowroots to layer content - need to indicate which layers we want to do this for ...
       // the layer will need to have the previewContent attribute set also ...
