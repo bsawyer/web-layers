@@ -186,6 +186,7 @@ class WebLayer extends HTMLElement {
     super();
     this.isSourced = false;
     this.isRendered = false;
+    this.isPrerendered = false;
     this.attachShadow({mode: 'open'});
   }
 
@@ -199,6 +200,7 @@ class WebLayer extends HTMLElement {
     if(name === 'src' && oldValue !== newValue && this.isConnected){
       this.isSourced = false;
       this.isRendered = false;
+      this.isPrerendered = false;
       this.source();
     }
   }
@@ -206,7 +208,6 @@ class WebLayer extends HTMLElement {
   source(){
     const template = Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
     const extendLayers = getExtendLayers(this);
-    const sourceEventName = this.getAttribute('sourceEvent') || 'DOMContentLoaded';
     const src = this.getAttribute('src');
     const previewSource = this.getAttribute('previewSource') !== null;
     const previewContent = this.getAttribute('previewContent') !== null;
@@ -246,8 +247,8 @@ class WebLayer extends HTMLElement {
     }
 
     if(template){
-      if(src && !WebLayer.TemplateRegsitry.get(src)){
-        WebLayer.TemplateRegsitry.define(src, this);
+      if(src && !WebLayer.TemplateRegistry.get(src)){
+        WebLayer.TemplateRegistry.define(src, this);
       }
       sourceLayer({
         element: this,
@@ -259,7 +260,7 @@ class WebLayer extends HTMLElement {
     }
 
     if(src){
-      const existingTemplate = WebLayer.TemplateRegsitry.get(src);
+      const existingTemplate = WebLayer.TemplateRegistry.get(src);
       if(existingTemplate){
         if(!existingTemplate.isSourced){
           existingTemplate.addEventListener('layerSourced', ()=>{
@@ -281,7 +282,7 @@ class WebLayer extends HTMLElement {
       }else{
         const prerenderedTemplate = document.querySelector(`[src="${src}"]>template`);
         if(prerenderedTemplate){
-          WebLayer.TemplateRegsitry.define(src, prerenderedTemplate.parentNode);
+          WebLayer.TemplateRegistry.define(src, prerenderedTemplate.parentNode);
           prerenderedTemplate.parentNode.addEventListener('layerSourced', () => {
             sourceLayer({
               element: this,
@@ -291,11 +292,13 @@ class WebLayer extends HTMLElement {
             });
           }, {once: true});
         }else{
-          WebLayer.TemplateRegsitry.define(src, this);
+          WebLayer.TemplateRegistry.define(src, this);
           const iframe = getIframe();
           iframe.setAttribute('src', getIframeSource(src));
           this.appendChild(iframe);
-          iframe.contentWindow.addEventListener(sourceEventName, () => {
+          let wasCalled = false;
+          const sourcedCallback = () => {
+            wasCalled = true;
             assignSourceTemplate(this, iframe);
             sourceLayer({
               element: this,
@@ -303,7 +306,14 @@ class WebLayer extends HTMLElement {
               waitingOnTemplateLayers: !!extendLayers.length,
               previewSource
             });
+          };
+          iframe.contentWindow.addEventListener('customSourceEvent', (e) => {
+            if(e?.detail?.customSourceEvent && !wasCalled){
+              iframe.contentWindow.removeEventListener('DOMContentLoaded', sourcedCallback);
+              iframe.contentWindow.addEventListener(e?.detail?.customSourceEvent, sourcedCallback)
+            }
           });
+          iframe.contentWindow.addEventListener('DOMContentLoaded', sourcedCallback);
         }
       }
     }
@@ -321,6 +331,27 @@ class WebLayer extends HTMLElement {
     const hasTemplate = !!Array.from(this.children).find(child => child instanceof HTMLTemplateElement);
     const renderEventName = this.getAttribute('renderEvent') || 'load';
     const sharedContext = this.getAttribute('sharedContext') !== null;
+    const prerenderEventName = this.getAttribute('prerenderEvent');
+
+    if(!this.isPrerendered){
+      window.addEventListener(('prerender')=>{
+        if(prerenderEventName){
+          if(WebLayer.prerenderStatus !== 'complete'){
+            WebLayer.prerenderQueue.push(this);
+            WebLayer.prerenderStatus = 'queued';
+          }
+          this.addEventListener(prerenderEventName, ()=>{
+            this.isPrerendered = true;
+            this.dispatchEvent(new Event('layerPrerendered'));
+            WebLayer.updateStatus('prerender', this);
+          }, {once: true});
+        }else{
+          this.isPrerendered = true;
+          this.dispatchEvent(new Event('layerPrerendered'));
+        }
+        this.prerenderCallback && this.prerenderCallback();
+      });
+    }
 
     if(isExtend){
       this.isRendered = true;
@@ -364,18 +395,18 @@ class WebLayer extends HTMLElement {
     });
   }
 }
-WebLayer.TemplateRegsitry = {
+WebLayer.TemplateRegistry = {
   get(src){
-    return WebLayer.TemplateRegsitry.templates[src];
+    return WebLayer.TemplateRegistry.templates[src];
   },
   define(src, element){
     if(!element instanceof WebLayer){
       throw new Error(`Invalid element`)
     }
-    if(WebLayer.TemplateRegsitry.templates[src]){
+    if(WebLayer.TemplateRegistry.templates[src]){
       throw new Error(`Template exists`)
     }
-    WebLayer.TemplateRegsitry.templates[src] = element;
+    WebLayer.TemplateRegistry.templates[src] = element;
   }
 };
 function templateRegistryClosure(){
@@ -385,7 +416,7 @@ function templateRegistryClosure(){
       if(window.top === window){
         return templates;
       }
-      return window.top.customElements.get('web-layer').TemplateRegsitry.templates;
+      return window.top.customElements.get('web-layer').TemplateRegistry.templates;
     },
     set(){
       //
@@ -406,12 +437,16 @@ function proxyClosure(){
     }
   };
 }
-Object.defineProperty(WebLayer.TemplateRegsitry, 'templates', templateRegistryClosure())
-Object.defineProperty(WebLayer, 'proxy', proxyClosure())
+Object.defineProperty(WebLayer.TemplateRegistry, 'templates', templateRegistryClosure());
+Object.defineProperty(WebLayer, 'proxy', proxyClosure());
+
+// need to make these private
 WebLayer.sourceStatus = 'pending'; // pending, queued, complete
 WebLayer.sourceQueue = [];
 WebLayer.renderStatus = 'pending'; // pending, queued, complete
 WebLayer.renderQueue = [];
+WebLayer.prerenderStatus = 'pending'; // pending, queued, complete
+WebLayer.prerenderQueue = [];
 WebLayer.updateStatus = function(status, element){
   if(WebLayer[`${status}Queue`].includes(element)){
     WebLayer[`${status}Queue`].splice(WebLayer[`${status}Queue`].indexOf(element), 1);
