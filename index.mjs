@@ -77,8 +77,8 @@ const server = https.createServer({
   cert
 }, app);
 
-// app.listen(PORT);
-server.listen(PORT);
+app.listen(PORT);
+// server.listen(PORT);
 
 console.log(`server listening on port ${PORT}`);
 
