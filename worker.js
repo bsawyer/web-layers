@@ -14,6 +14,7 @@ async function handleRequest(request) {
 
   // Set CORS headers
   response.headers.set("Access-Control-Allow-Origin", url.origin)
+  response.headers.delete("X-Frame-Options");
 
   // Append to/Add Vary header so browser will cache response correctly
   response.headers.append("Vary", "Origin")
